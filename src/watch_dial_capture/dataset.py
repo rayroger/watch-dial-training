@@ -4,12 +4,12 @@ The output directory produced by :func:`save_capture` looks like::
 
     output_dir/
         annotated/
-            20240102-153000.jpg          # full picture with boxes/labels
+            20240102-153000-000.jpg          # full picture with boxes/labels
         watches/
-            20240102-153000_watch_0.jpg  # cropped, per-watch dials
-            20240102-153000_watch_1.jpg
+            20240102-153000-000_watch_0.jpg  # cropped, per-watch dials
+            20240102-153000-000_watch_1.jpg
         metadata/
-            20240102-153000.json         # detection metadata for this capture
+            20240102-153000-000.json         # detection metadata for this capture
 
 Keeping the annotated (human-review) pictures and metadata separate
 from the per-watch crops (the actual TensorFlow training inputs) makes
@@ -58,7 +58,10 @@ def save_capture(
         A :class:`CaptureResult` describing where each file was written.
     """
     timestamp = timestamp or datetime.now()
-    stamp = timestamp.strftime("%Y%m%d-%H%M%S")
+    # Include millisecond precision so that multiple watches captured in
+    # the same second (or successive runs invoked in quick succession)
+    # do not silently overwrite each other's files.
+    stamp = timestamp.strftime("%Y%m%d-%H%M%S-%f")[:-3]
 
     output_dir = Path(output_dir)
     annotated_dir = output_dir / ANNOTATED_DIR_NAME

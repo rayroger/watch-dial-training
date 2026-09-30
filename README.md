@@ -20,10 +20,10 @@ for a TensorFlow model that reads the time from an analog watch dial.
 
    ```
    captures/
-     annotated/20240102-153000.jpg          # full picture, for review
-     watches/20240102-153000_watch_0.jpg    # per-watch crop, for training
-     watches/20240102-153000_watch_1.jpg
-     metadata/20240102-153000.json          # detection metadata
+     annotated/20240102-153000-000.jpg          # full picture, for review
+     watches/20240102-153000-000_watch_0.jpg    # per-watch crop, for training
+     watches/20240102-153000-000_watch_1.jpg
+     metadata/20240102-153000-000.json          # detection metadata
    ```
 
 ## Installation

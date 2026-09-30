@@ -23,17 +23,17 @@ def test_save_capture_writes_annotated_and_cropped_images(tmp_path):
 
     assert result.annotated_path.exists()
     assert result.annotated_path.parent.name == "annotated"
-    assert result.annotated_path.name == "20240102-153000.jpg"
+    assert result.annotated_path.name == "20240102-153000-000.jpg"
 
     assert len(result.watch_paths) == 2
     for index, watch_path in enumerate(result.watch_paths):
         assert watch_path.exists()
         assert watch_path.parent.name == "watches"
-        assert watch_path.name == f"20240102-153000_watch_{index}.jpg"
+        assert watch_path.name == f"20240102-153000-000_watch_{index}.jpg"
 
     assert result.metadata_path.exists()
     assert result.metadata_path.parent.name == "metadata"
-    assert result.metadata_path.name == "20240102-153000.json"
+    assert result.metadata_path.name == "20240102-153000-000.json"
     assert "detections" in result.metadata_path.read_text()
 
 

@@ -79,6 +79,8 @@ def run_capture_loop(
         The :class:`~watch_dial_capture.dataset.CaptureResult` for each
         capture, as they happen.
     """
+    RECOVERABLE_ERRORS = (RuntimeError, OSError, ValueError, cv2.error)
+
     captured = 0
     while count is None or captured < count:
         try:
@@ -88,7 +90,7 @@ def run_capture_loop(
             )
             logger.info("Captured frame with %d watch(es) detected", len(detections))
             result = save_capture(frame, detections, output_dir)
-        except Exception:  # noqa: BLE001 - keep the loop alive across failures
+        except RECOVERABLE_ERRORS:
             logger.exception("Capture attempt failed; will retry on the next interval")
             sleep_fn(interval_seconds)
             continue
