@@ -27,6 +27,7 @@ class Camera:
     def __init__(self, device_index: int = 0):
         self._capture = cv2.VideoCapture(device_index)
         if not self._capture.isOpened():
+            self._capture.release()
             raise RuntimeError(f"Could not open camera at index {device_index}")
 
     def read(self):
@@ -63,8 +64,11 @@ def run_capture_loop(
         output_dir: Directory passed to
             :func:`watch_dial_capture.dataset.save_capture`.
         interval_seconds: Delay between successive captures.
-        count: Number of captures to take. ``None`` means run forever
-            (until interrupted).
+        count: Number of *successful* captures to take before returning.
+            A failed attempt (e.g. a transient camera glitch) does not
+            count against this total; the loop simply retries after
+            the usual interval. ``None`` means run forever (until
+            interrupted).
         min_radius: Forwarded to
             :func:`watch_dial_capture.detection.detect_watch_regions`.
         max_radius: Forwarded to
@@ -86,9 +90,10 @@ def run_capture_loop(
             result = save_capture(frame, detections, output_dir)
         except Exception:  # noqa: BLE001 - keep the loop alive across failures
             logger.exception("Capture attempt failed; will retry on the next interval")
-        else:
-            yield result
+            sleep_fn(interval_seconds)
+            continue
 
         captured += 1
+        yield result
         if count is None or captured < count:
             sleep_fn(interval_seconds)

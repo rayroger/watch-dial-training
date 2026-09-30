@@ -48,10 +48,9 @@ def test_run_capture_loop_continues_after_a_failed_capture(tmp_path):
         )
     )
 
-    assert camera.read_count == 2
-    # Only the second attempt succeeded, so only one result is yielded,
-    # but the loop did not stop/crash after the first failure.
-    assert len(results) == 1
+    # First read fails (retried), then two successful reads satisfy count=2.
+    assert camera.read_count == 3
+    assert len(results) == 2
 
 
 def test_run_capture_loop_runs_requested_number_of_captures(tmp_path):

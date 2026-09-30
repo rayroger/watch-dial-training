@@ -2,10 +2,13 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+import numpy as np
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from tests.conftest import make_synthetic_watches_image
-from watch_dial_capture.dataset import save_capture
+from watch_dial_capture.dataset import _write_image, save_capture
 from watch_dial_capture.detection import detect_watch_regions
 
 
@@ -41,3 +44,19 @@ def test_save_capture_with_no_detections_still_writes_annotated_image(tmp_path):
 
     assert result.annotated_path.exists()
     assert result.watch_paths == []
+
+
+def test_write_image_rejects_empty_image(tmp_path):
+    empty_image = np.empty((0, 0, 3), dtype=np.uint8)
+
+    with pytest.raises(ValueError):
+        _write_image(tmp_path / "empty.jpg", empty_image)
+
+
+def test_write_image_raises_io_error_on_write_failure(tmp_path, monkeypatch):
+    image = make_synthetic_watches_image()
+
+    monkeypatch.setattr("watch_dial_capture.dataset.cv2.imwrite", lambda *a, **k: False)
+
+    with pytest.raises(IOError):
+        _write_image(tmp_path / "will_fail.jpg", image)
