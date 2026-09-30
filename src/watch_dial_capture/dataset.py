@@ -8,6 +8,7 @@ The output directory produced by :func:`save_capture` looks like::
         watches/
             20240102-153000_watch_0.jpg  # cropped, per-watch dials
             20240102-153000_watch_1.jpg
+            20240102-153000_metadata.json # detection metadata for this capture
 
 Keeping the annotated (human-review) pictures separate from the
 per-watch crops (the actual TensorFlow training inputs) makes it easy
@@ -72,7 +73,7 @@ def save_capture(
         _write_image(watch_path, crop)
         watch_paths.append(watch_path)
 
-    metadata_path = watches_dir / f"{stamp}.json"
+    metadata_path = watches_dir / f"{stamp}_metadata.json"
     metadata_path.write_text(
         json.dumps(
             {

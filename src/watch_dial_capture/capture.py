@@ -13,6 +13,8 @@ import time
 from pathlib import Path
 from typing import Iterator, Optional
 
+import cv2
+
 from .dataset import CaptureResult, save_capture
 from .detection import detect_watch_regions
 
