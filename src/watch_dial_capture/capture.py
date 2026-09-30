@@ -77,13 +77,17 @@ def run_capture_loop(
     """
     captured = 0
     while count is None or captured < count:
-        frame = camera.read()
-        detections = detect_watch_regions(
-            frame, min_radius=min_radius, max_radius=max_radius
-        )
-        logger.info("Captured frame with %d watch(es) detected", len(detections))
-        result = save_capture(frame, detections, output_dir)
-        yield result
+        try:
+            frame = camera.read()
+            detections = detect_watch_regions(
+                frame, min_radius=min_radius, max_radius=max_radius
+            )
+            logger.info("Captured frame with %d watch(es) detected", len(detections))
+            result = save_capture(frame, detections, output_dir)
+        except Exception:  # noqa: BLE001 - keep the loop alive across failures
+            logger.exception("Capture attempt failed; will retry on the next interval")
+        else:
+            yield result
 
         captured += 1
         if count is None or captured < count:

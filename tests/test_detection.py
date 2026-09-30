@@ -31,6 +31,19 @@ def test_detect_watch_regions_respects_radius_bounds():
     assert detections == []
 
 
+def test_detect_watch_regions_accepts_explicit_min_distance():
+    image = make_synthetic_watches_image()
+
+    # A very large min_distance should collapse the two nearby watches
+    # into (at most) a single detection, proving the argument is
+    # actually forwarded to cv2.HoughCircles instead of being ignored.
+    detections = detect_watch_regions(
+        image, min_radius=50, max_radius=120, min_distance=10_000
+    )
+
+    assert len(detections) <= 1
+
+
 def test_detect_watch_regions_rejects_empty_image():
     with pytest.raises(ValueError):
         detect_watch_regions(__import__("numpy").empty((0, 0)))
