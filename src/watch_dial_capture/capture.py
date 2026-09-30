@@ -20,6 +20,12 @@ from .detection import detect_watch_regions
 
 logger = logging.getLogger(__name__)
 
+# Exceptions expected from a real camera/detection pipeline (a dropped
+# frame, a disconnected device, an unreadable/corrupt image, ...). Any
+# other exception type is treated as a programming error and is allowed
+# to propagate instead of being silently retried.
+RECOVERABLE_ERRORS = (RuntimeError, OSError, ValueError, cv2.error)
+
 
 class Camera:
     """Thin wrapper around :class:`cv2.VideoCapture` for easier testing."""
@@ -54,6 +60,7 @@ def run_capture_loop(
     count: Optional[int] = None,
     min_radius: int = 40,
     max_radius: int = 400,
+    max_consecutive_failures: Optional[int] = 5,
     sleep_fn=time.sleep,
 ) -> Iterator[CaptureResult]:
     """Periodically capture, annotate and save pictures.
@@ -73,15 +80,18 @@ def run_capture_loop(
             :func:`watch_dial_capture.detection.detect_watch_regions`.
         max_radius: Forwarded to
             :func:`watch_dial_capture.detection.detect_watch_regions`.
+        max_consecutive_failures: Raise :class:`RuntimeError` once this
+            many capture attempts in a row have failed (e.g. the camera
+            was unplugged), instead of retrying forever. ``None``
+            disables this limit.
         sleep_fn: Sleep function, overridable for tests.
 
     Yields:
         The :class:`~watch_dial_capture.dataset.CaptureResult` for each
         capture, as they happen.
     """
-    RECOVERABLE_ERRORS = (RuntimeError, OSError, ValueError, cv2.error)
-
     captured = 0
+    consecutive_failures = 0
     while count is None or captured < count:
         try:
             frame = camera.read()
@@ -91,10 +101,23 @@ def run_capture_loop(
             logger.info("Captured frame with %d watch(es) detected", len(detections))
             result = save_capture(frame, detections, output_dir)
         except RECOVERABLE_ERRORS:
-            logger.exception("Capture attempt failed; will retry on the next interval")
+            consecutive_failures += 1
+            logger.exception(
+                "Capture attempt failed (%d consecutive failure(s)); will retry "
+                "on the next interval",
+                consecutive_failures,
+            )
+            if (
+                max_consecutive_failures is not None
+                and consecutive_failures >= max_consecutive_failures
+            ):
+                raise RuntimeError(
+                    f"Capture failed {consecutive_failures} times in a row; giving up"
+                ) from None
             sleep_fn(interval_seconds)
             continue
 
+        consecutive_failures = 0
         captured += 1
         yield result
         if count is None or captured < count:
