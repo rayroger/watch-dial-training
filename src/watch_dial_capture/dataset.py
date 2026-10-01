@@ -71,26 +71,39 @@ def save_capture(
     watches_dir.mkdir(parents=True, exist_ok=True)
     metadata_dir.mkdir(parents=True, exist_ok=True)
 
-    annotated_image = annotate_image(image, detections, timestamp=stamp)
-    annotated_path = annotated_dir / f"{stamp}.jpg"
-    _write_image(annotated_path, annotated_image)
+    written_paths: List[Path] = []
+    try:
+        annotated_image = annotate_image(image, detections, timestamp=stamp)
+        annotated_path = annotated_dir / f"{stamp}.jpg"
+        _write_image(annotated_path, annotated_image)
+        written_paths.append(annotated_path)
 
-    watch_paths: List[Path] = []
-    for index, crop in enumerate(crop_detections(image, detections)):
-        watch_path = watches_dir / f"{stamp}_watch_{index}.jpg"
-        _write_image(watch_path, crop)
-        watch_paths.append(watch_path)
+        watch_paths: List[Path] = []
+        for index, crop in enumerate(crop_detections(image, detections)):
+            watch_path = watches_dir / f"{stamp}_watch_{index}.jpg"
+            _write_image(watch_path, crop)
+            watch_paths.append(watch_path)
+            written_paths.append(watch_path)
 
-    metadata_path = metadata_dir / f"{stamp}.json"
-    metadata_path.write_text(
-        json.dumps(
-            {
-                "timestamp": timestamp.isoformat(),
-                "detections": [asdict(d) for d in detections],
-            },
-            indent=2,
+        metadata_path = metadata_dir / f"{stamp}.json"
+        metadata_path.write_text(
+            json.dumps(
+                {
+                    "timestamp": timestamp.isoformat(),
+                    "detections": [asdict(d) for d in detections],
+                },
+                indent=2,
+            )
         )
-    )
+        written_paths.append(metadata_path)
+    except Exception:
+        # Don't leave a partially-written capture (e.g. the annotated
+        # picture and some, but not all, watch crops) on disk: a
+        # training pipeline scanning these directories should never see
+        # an incomplete/inconsistent set of files for a given timestamp.
+        for path in written_paths:
+            path.unlink(missing_ok=True)
+        raise
 
     return CaptureResult(
         annotated_path=annotated_path,

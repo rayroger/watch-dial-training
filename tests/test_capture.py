@@ -1,6 +1,8 @@
 import sys
 from pathlib import Path
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from tests.conftest import make_synthetic_watches_image
@@ -29,6 +31,17 @@ class _FlakyCamera:
         if self.read_count == 1:
             raise RuntimeError("simulated camera glitch")
         return self._frame
+
+
+class _AlwaysFailingCamera:
+    """A fake camera that never succeeds, to exercise the failure limit."""
+
+    def __init__(self):
+        self.read_count = 0
+
+    def read(self):
+        self.read_count += 1
+        raise RuntimeError("camera permanently disconnected")
 
 
 def test_run_capture_loop_continues_after_a_failed_capture(tmp_path):
@@ -77,3 +90,23 @@ def test_run_capture_loop_runs_requested_number_of_captures(tmp_path):
     for result in results:
         assert result.annotated_path.exists()
         assert len(result.watch_paths) == 2
+
+
+def test_run_capture_loop_raises_after_max_consecutive_failures(tmp_path):
+    camera = _AlwaysFailingCamera()
+    sleeps = []
+
+    with pytest.raises(RuntimeError):
+        list(
+            run_capture_loop(
+                camera,
+                tmp_path,
+                interval_seconds=1,
+                max_consecutive_failures=3,
+                sleep_fn=sleeps.append,
+            )
+        )
+
+    assert camera.read_count == 3
+    assert sleeps == [1, 1]
+

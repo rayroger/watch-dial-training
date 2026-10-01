@@ -62,6 +62,16 @@ def build_arg_parser() -> argparse.ArgumentParser:
         help="Largest expected watch-face radius in pixels (default: 400).",
     )
     parser.add_argument(
+        "--max-consecutive-failures",
+        type=int,
+        default=5,
+        help=(
+            "Stop with an error after this many capture attempts in a row "
+            "fail, e.g. if the camera is disconnected (default: 5). Use 0 "
+            "to retry forever."
+        ),
+    )
+    parser.add_argument(
         "--verbose",
         action="store_true",
         help="Enable debug logging.",
@@ -87,6 +97,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 count=args.count,
                 min_radius=args.min_radius,
                 max_radius=args.max_radius,
+                max_consecutive_failures=args.max_consecutive_failures or None,
             ):
                 print(f"Saved {result.annotated_path} ({len(result.watch_paths)} watch crop(s))")
         except KeyboardInterrupt:
