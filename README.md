@@ -52,6 +52,35 @@ Run `python -m watch_dial_capture.cli --help` for all options
 of captures to take, photo-mode resolution and autofocus warm-up,
 etc.).
 
+### Choosing and inspecting a camera (Windows)
+
+List camera indices available through the automatic OpenCV backend:
+
+```powershell
+python -m watch_dial_capture.cli --list-cameras
+```
+
+To use camera index 0 or 1 with DirectShow (DSHOW) or Media Foundation
+(MSMF), select the index and backend explicitly:
+
+```powershell
+python -m watch_dial_capture.cli --camera-index 0 --camera-backend dshow --output-dir ./captures
+python -m watch_dial_capture.cli --camera-index 1 --camera-backend msmf --output-dir ./captures
+```
+
+List cameras through a specific backend, or inspect common properties for
+one camera without starting capture:
+
+```powershell
+python -m watch_dial_capture.cli --camera-backend dshow --list-cameras
+python -m watch_dial_capture.cli --camera-index 0 --camera-backend dshow --dump-camera-props
+```
+
+Property reporting depends on the OpenCV backend and camera device; an
+unsupported or unreadable value is marked in the output. Native driver
+settings may expose more controls and capability details than OpenCV's
+`get()`/`set()` interface.
+
 ## Tests
 
 ```bash

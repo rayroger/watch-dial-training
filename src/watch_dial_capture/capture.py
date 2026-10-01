@@ -67,13 +67,14 @@ class Camera:
         self,
         device_index: int = 0,
         *,
+        backend: int = cv2.CAP_ANY,
         frame_width: int = DEFAULT_FRAME_WIDTH,
         frame_height: int = DEFAULT_FRAME_HEIGHT,
         focus_warmup_frames: int = DEFAULT_FOCUS_WARMUP_FRAMES,
         focus_warmup_delay_seconds: float = DEFAULT_FOCUS_WARMUP_DELAY_SECONDS,
         sleep_fn=time.sleep,
     ):
-        self._capture = cv2.VideoCapture(device_index)
+        self._capture = cv2.VideoCapture(device_index, backend)
         if not self._capture.isOpened():
             self._capture.release()
             raise RuntimeError(f"Could not open camera at index {device_index}")

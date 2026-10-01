@@ -21,8 +21,9 @@ class _FakeVideoCapture:
 
     instances = []
 
-    def __init__(self, device_index):
+    def __init__(self, device_index, backend):
         self.device_index = device_index
+        self.backend = backend
         self.released = False
         _FakeVideoCapture.instances.append(self)
 
@@ -52,8 +53,9 @@ def test_camera_releases_capture_when_open_fails(monkeypatch):
 class _RecordingVideoCapture:
     """Stand-in for cv2.VideoCapture that records calls and reads frames."""
 
-    def __init__(self, device_index, frames):
+    def __init__(self, device_index, frames, backend=cv2.CAP_ANY):
         self.device_index = device_index
+        self.backend = backend
         self._frames = list(frames)
         self.set_calls = []
         self.read_count = 0
@@ -78,11 +80,13 @@ def test_camera_requests_max_resolution_and_autofocus(monkeypatch):
     frames = [np.full((10, 10, 3), i, dtype=np.uint8) for i in range(1, 3)]
     fake = _RecordingVideoCapture(0, frames)
     monkeypatch.setattr(
-        "watch_dial_capture.capture.cv2.VideoCapture", lambda index: fake
+        "watch_dial_capture.capture.cv2.VideoCapture",
+        lambda index, backend=cv2.CAP_ANY: fake,
     )
 
     Camera(device_index=0, focus_warmup_frames=1, sleep_fn=lambda _: None)
 
+    assert fake.backend == cv2.CAP_ANY
     assert (cv2.CAP_PROP_FRAME_WIDTH, DEFAULT_FRAME_WIDTH) in fake.set_calls
     assert (cv2.CAP_PROP_FRAME_HEIGHT, DEFAULT_FRAME_HEIGHT) in fake.set_calls
     assert (cv2.CAP_PROP_AUTOFOCUS, 1) in fake.set_calls
@@ -92,7 +96,8 @@ def test_camera_read_discards_warmup_frames(monkeypatch):
     frames = [np.full((10, 10, 3), i, dtype=np.uint8) for i in range(1, 6)]
     fake = _RecordingVideoCapture(0, frames)
     monkeypatch.setattr(
-        "watch_dial_capture.capture.cv2.VideoCapture", lambda index: fake
+        "watch_dial_capture.capture.cv2.VideoCapture",
+        lambda index, backend=cv2.CAP_ANY: fake,
     )
     sleeps = []
 
@@ -111,10 +116,28 @@ def test_camera_read_defaults_to_several_warmup_frames(monkeypatch):
     frames = [np.full((10, 10, 3), i, dtype=np.uint8) for i in range(1, 50)]
     fake = _RecordingVideoCapture(0, frames)
     monkeypatch.setattr(
-        "watch_dial_capture.capture.cv2.VideoCapture", lambda index: fake
+        "watch_dial_capture.capture.cv2.VideoCapture",
+        lambda index, backend=cv2.CAP_ANY: fake,
     )
 
     camera = Camera(device_index=0, sleep_fn=lambda _: None)
     camera.read()
 
     assert fake.read_count == DEFAULT_FOCUS_WARMUP_FRAMES
+
+
+def test_camera_passes_selected_backend_to_videocapture(monkeypatch):
+    fake = _RecordingVideoCapture(1, [np.zeros((2, 2, 3), dtype=np.uint8)])
+    calls = []
+
+    def video_capture(index, backend):
+        calls.append((index, backend))
+        return fake
+
+    monkeypatch.setattr(
+        "watch_dial_capture.capture.cv2.VideoCapture", video_capture
+    )
+
+    Camera(device_index=1, backend=123, focus_warmup_frames=1)
+
+    assert calls == [(1, 123)]
