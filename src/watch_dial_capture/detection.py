@@ -45,8 +45,8 @@ class Detection:
 def detect_watch_regions(
     image: np.ndarray,
     *,
-    min_radius: int = 40,
-    max_radius: int = 400,
+    min_radius: int = 150,
+    max_radius: int = 350,
     min_distance: int | None = None,
     dp: float = 1.2,
     param1: float = 100,

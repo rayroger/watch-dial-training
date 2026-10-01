@@ -52,6 +52,21 @@ Run `python -m watch_dial_capture.cli --help` for all options
 of captures to take, photo-mode resolution and autofocus warm-up,
 etc.).
 
+By default, watch faces are expected to have a radius between 150 and
+350 pixels (`--min-radius`/`--max-radius`). If detection finds too many
+or too few circles, the underlying Hough-circle transform can also be
+tuned directly:
+
+```bash
+python -m watch_dial_capture.cli --min-radius 150 --max-radius 350 --param2 60
+```
+
+- `--dp` (default: 1.2): inverse ratio of the accumulator resolution.
+- `--param1` (default: 100): higher Canny edge-detector threshold.
+- `--param2` (default: 40): accumulator threshold for circle centers;
+  raise this to reject weaker/accidental circular edges (e.g. tangled
+  cables or shadows) and reduce false positives.
+
 To frame watches and tune detection before capture, start the live preview:
 
 ```bash
@@ -60,7 +75,7 @@ python -m watch_dial_capture.cli \
   --camera-backend dshow \
   --min-radius 150 \
   --max-radius 350 \
-  --hough-param2 55 \
+  --param2 55 \
   --preview
 ```
 

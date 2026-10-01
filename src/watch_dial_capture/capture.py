@@ -126,13 +126,13 @@ def run_capture_loop(
     *,
     interval_seconds: float = 60.0,
     count: Optional[int] = None,
-    min_radius: int = 40,
-    max_radius: int = 400,
-    max_consecutive_failures: Optional[int] = 5,
-    sleep_fn=time.sleep,
+    min_radius: int = 150,
+    max_radius: int = 350,
     dp: float = 1.2,
     param1: float = 100,
     param2: float = 40,
+    max_consecutive_failures: Optional[int] = 5,
+    sleep_fn=time.sleep,
 ) -> Iterator[CaptureResult]:
     """Periodically capture, annotate and save pictures.
 
@@ -154,9 +154,12 @@ def run_capture_loop(
             :func:`watch_dial_capture.detection.detect_watch_regions`.
         max_radius: Forwarded to
             :func:`watch_dial_capture.detection.detect_watch_regions`.
-        dp: Inverse accumulator resolution forwarded to circle detection.
-        param1: Canny threshold forwarded to circle detection.
-        param2: Circle accumulator threshold forwarded to circle detection.
+        dp: Forwarded to
+            :func:`watch_dial_capture.detection.detect_watch_regions`.
+        param1: Forwarded to
+            :func:`watch_dial_capture.detection.detect_watch_regions`.
+        param2: Forwarded to
+            :func:`watch_dial_capture.detection.detect_watch_regions`.
         max_consecutive_failures: Raise :class:`RuntimeError` once this
             many capture attempts in a row have failed (e.g. the camera
             was unplugged), instead of retrying forever. ``None``

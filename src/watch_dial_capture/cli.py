@@ -172,34 +172,48 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--min-radius",
         type=int,
-        default=40,
-        help="Smallest expected watch-face radius in pixels (default: 40).",
+        default=150,
+        help="Smallest expected watch-face radius in pixels (default: 150).",
     )
     parser.add_argument(
         "--max-radius",
         type=int,
-        default=400,
-        help="Largest expected watch-face radius in pixels (default: 400).",
+        default=350,
+        help="Largest expected watch-face radius in pixels (default: 350).",
     )
     parser.add_argument(
+        "--dp",
         "--hough-dp",
+        dest="dp",
         type=float,
         default=1.2,
-        help="Inverse accumulator resolution for Hough detection (default: 1.2).",
+        help=(
+            "Inverse ratio of the Hough-circle accumulator resolution "
+            "(default: 1.2), forwarded to cv2.HoughCircles."
+        ),
     )
     parser.add_argument(
+        "--param1",
         "--hough-param1",
+        dest="param1",
         type=float,
         default=100,
-        help="Higher Canny threshold for Hough detection (default: 100).",
+        help=(
+            "Higher Canny edge-detector threshold (default: 100), "
+            "forwarded to cv2.HoughCircles."
+        ),
     )
     parser.add_argument(
+        "--param2",
         "--hough-param2",
+        dest="param2",
         type=float,
         default=40,
         help=(
-            "Circle accumulator threshold; higher values detect fewer circles "
-            "(default: 40)."
+            "Accumulator threshold for circle centers (default: 40); "
+            "raise this to reject weaker/accidental circular edges "
+            "(e.g. cables, shadows) and reduce false positives, "
+            "forwarded to cv2.HoughCircles."
         ),
     )
     parser.add_argument(
@@ -296,9 +310,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 frame_height=args.frame_height,
                 min_radius=args.min_radius,
                 max_radius=args.max_radius,
-                dp=args.hough_dp,
-                param1=args.hough_param1,
-                param2=args.hough_param2,
+                dp=args.dp,
+                param1=args.param1,
+                param2=args.param2,
             )
         except RuntimeError as exc:
             parser.error(str(exc))
@@ -321,9 +335,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 count=args.count,
                 min_radius=args.min_radius,
                 max_radius=args.max_radius,
-                dp=args.hough_dp,
-                param1=args.hough_param1,
-                param2=args.hough_param2,
+                dp=args.dp,
+                param1=args.param1,
+                param2=args.param2,
                 max_consecutive_failures=args.max_consecutive_failures or None,
             ):
                 print(f"Saved {result.annotated_path} ({len(result.watch_paths)} watch crop(s))")

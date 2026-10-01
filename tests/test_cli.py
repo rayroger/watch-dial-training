@@ -108,8 +108,19 @@ def test_unsupported_backend_is_a_clear_cli_error():
     assert exc_info.value.code == 2
 
 
-def test_preview_and_hough_options_are_parsed():
-    args = cli.build_arg_parser().parse_args(
+def test_parser_defaults_match_expected_radius_and_hough_params():
+    args = cli.build_arg_parser().parse_args([])
+
+    assert args.min_radius == 150
+    assert args.max_radius == 350
+    assert args.dp == 1.2
+    assert args.param1 == 100
+    assert args.param2 == 40
+
+
+def test_preview_and_hough_option_aliases_are_parsed():
+    parser = cli.build_arg_parser()
+    args = parser.parse_args(
         [
             "--preview",
             "--hough-dp",
@@ -122,9 +133,10 @@ def test_preview_and_hough_options_are_parsed():
     )
 
     assert args.preview
-    assert args.hough_dp == 1.5
-    assert args.hough_param1 == 120
-    assert args.hough_param2 == 55
+    assert args.dp == 1.5
+    assert args.param1 == 120
+    assert args.param2 == 55
+    assert parser.parse_args(["--dp", "1.1", "--param1", "90", "--param2", "60"])
 
 
 def test_preview_cancel_skips_capture(monkeypatch, capsys):
@@ -203,6 +215,48 @@ def test_accepted_preview_uses_cli_detection_settings(monkeypatch):
     assert capture_args["loop"]["dp"] == 1.4
     assert capture_args["loop"]["param1"] == 110
     assert capture_args["loop"]["param2"] == 60
+
+
+def test_main_threads_radius_and_hough_params_into_capture_loop(monkeypatch, tmp_path):
+    captured_kwargs = {}
+
+    class FakeCamera:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc_info):
+            return None
+
+    monkeypatch.setattr(cli, "Camera", lambda *args, **kwargs: FakeCamera())
+    monkeypatch.setattr(
+        cli, "run_capture_loop", lambda camera, output_dir, **kwargs: captured_kwargs.update(kwargs) or iter(())
+    )
+
+    assert (
+        cli.main(
+            [
+                "--output-dir",
+                str(tmp_path / "unused"),
+                "--min-radius",
+                "123",
+                "--max-radius",
+                "321",
+                "--dp",
+                "1.5",
+                "--param1",
+                "90",
+                "--param2",
+                "55",
+            ]
+        )
+        == 0
+    )
+
+    assert captured_kwargs["min_radius"] == 123
+    assert captured_kwargs["max_radius"] == 321
+    assert captured_kwargs["dp"] == 1.5
+    assert captured_kwargs["param1"] == 90
+    assert captured_kwargs["param2"] == 55
 
 
 def test_camera_diagnostics_do_not_open_preview(monkeypatch, capsys):
