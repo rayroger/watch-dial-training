@@ -126,8 +126,11 @@ def run_capture_loop(
     *,
     interval_seconds: float = 60.0,
     count: Optional[int] = None,
-    min_radius: int = 40,
-    max_radius: int = 400,
+    min_radius: int = 150,
+    max_radius: int = 350,
+    dp: float = 1.2,
+    param1: float = 100,
+    param2: float = 40,
     max_consecutive_failures: Optional[int] = 5,
     sleep_fn=time.sleep,
 ) -> Iterator[CaptureResult]:
@@ -150,6 +153,12 @@ def run_capture_loop(
         min_radius: Forwarded to
             :func:`watch_dial_capture.detection.detect_watch_regions`.
         max_radius: Forwarded to
+            :func:`watch_dial_capture.detection.detect_watch_regions`.
+        dp: Forwarded to
+            :func:`watch_dial_capture.detection.detect_watch_regions`.
+        param1: Forwarded to
+            :func:`watch_dial_capture.detection.detect_watch_regions`.
+        param2: Forwarded to
             :func:`watch_dial_capture.detection.detect_watch_regions`.
         max_consecutive_failures: Raise :class:`RuntimeError` once this
             many capture attempts in a row have failed (e.g. the camera
@@ -177,7 +186,12 @@ def run_capture_loop(
         try:
             frame = camera.read()
             detections = detect_watch_regions(
-                frame, min_radius=min_radius, max_radius=max_radius
+                frame,
+                min_radius=min_radius,
+                max_radius=max_radius,
+                dp=dp,
+                param1=param1,
+                param2=param2,
             )
             logger.info("Captured frame with %d watch(es) detected", len(detections))
             result = save_capture(frame, detections, output_dir)
