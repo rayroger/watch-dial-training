@@ -26,6 +26,7 @@ from .capture import (
     MIN_CAPTURE_INTERVAL_SECONDS,
     run_capture_loop,
 )
+from .preview import run_camera_preview
 
 CAMERA_BACKENDS = {
     "any": ("CAP_ANY", False),
@@ -182,6 +183,8 @@ def build_arg_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--dp",
+        "--hough-dp",
+        dest="dp",
         type=float,
         default=1.2,
         help=(
@@ -191,6 +194,8 @@ def build_arg_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--param1",
+        "--hough-param1",
+        dest="param1",
         type=float,
         default=100,
         help=(
@@ -200,6 +205,8 @@ def build_arg_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--param2",
+        "--hough-param2",
+        dest="param2",
         type=float,
         default=40,
         help=(
@@ -207,6 +214,14 @@ def build_arg_parser() -> argparse.ArgumentParser:
             "raise this to reject weaker/accidental circular edges "
             "(e.g. cables, shadows) and reduce false positives, "
             "forwarded to cv2.HoughCircles."
+        ),
+    )
+    parser.add_argument(
+        "--preview",
+        action="store_true",
+        help=(
+            "Show a live camera preview before capture. Press Enter/Space to "
+            "continue or Q/Esc to quit."
         ),
     )
     parser.add_argument(
@@ -285,6 +300,25 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         for name, value in properties:
             print(f"{name}: {value}")
         return 0
+
+    if args.preview:
+        try:
+            accepted = run_camera_preview(
+                args.camera_index,
+                backend=backend,
+                frame_width=args.frame_width,
+                frame_height=args.frame_height,
+                min_radius=args.min_radius,
+                max_radius=args.max_radius,
+                dp=args.dp,
+                param1=args.param1,
+                param2=args.param2,
+            )
+        except RuntimeError as exc:
+            parser.error(str(exc))
+        if not accepted:
+            print("Preview cancelled; no captures started.")
+            return 0
 
     with Camera(
         args.camera_index,

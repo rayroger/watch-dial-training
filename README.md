@@ -67,6 +67,24 @@ python -m watch_dial_capture.cli --min-radius 150 --max-radius 350 --param2 60
   raise this to reject weaker/accidental circular edges (e.g. tangled
   cables or shadows) and reduce false positives.
 
+To frame watches and tune detection before capture, start the live preview:
+
+```bash
+python -m watch_dial_capture.cli \
+  --camera-index 0 \
+  --camera-backend dshow \
+  --min-radius 150 \
+  --max-radius 350 \
+  --param2 55 \
+  --preview
+```
+
+The preview shows detected circles, bounding boxes, and a detection count.
+Press **Enter** or **Space** to accept the framing and start the usual
+capture workflow, or **Q** or **Esc** to quit without capturing. Preview
+requires GUI-enabled OpenCV and an available display; camera-listing and
+property-inspection modes do not open a preview window.
+
 ### Choosing and inspecting a camera (Windows)
 
 List camera indices available through the automatic OpenCV backend:

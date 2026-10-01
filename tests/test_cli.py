@@ -118,48 +118,119 @@ def test_parser_defaults_match_expected_radius_and_hough_params():
     assert args.param2 == 40
 
 
-def test_parser_accepts_explicit_radius_and_hough_overrides():
-    args = cli.build_arg_parser().parse_args(
+def test_preview_and_hough_option_aliases_are_parsed():
+    parser = cli.build_arg_parser()
+    args = parser.parse_args(
         [
-            "--min-radius",
-            "10",
-            "--max-radius",
-            "20",
-            "--dp",
-            "2.0",
-            "--param1",
-            "50",
-            "--param2",
-            "75",
+            "--preview",
+            "--hough-dp",
+            "1.5",
+            "--hough-param1",
+            "120",
+            "--hough-param2",
+            "55",
         ]
     )
 
-    assert args.min_radius == 10
-    assert args.max_radius == 20
-    assert args.dp == 2.0
-    assert args.param1 == 50
-    assert args.param2 == 75
+    assert args.preview
+    assert args.dp == 1.5
+    assert args.param1 == 120
+    assert args.param2 == 55
+    assert parser.parse_args(["--dp", "1.1", "--param1", "90", "--param2", "60"])
+
+
+def test_preview_cancel_skips_capture(monkeypatch, capsys):
+    monkeypatch.setattr(cli, "run_camera_preview", lambda *args, **kwargs: False)
+    monkeypatch.setattr(
+        cli, "Camera", lambda *args, **kwargs: pytest.fail("capture should not start")
+    )
+
+    assert cli.main(["--preview"]) == 0
+
+    assert "Preview cancelled" in capsys.readouterr().out
+
+
+def test_accepted_preview_uses_cli_detection_settings(monkeypatch):
+    preview_args = {}
+    capture_args = {}
+
+    def preview(device_index, **kwargs):
+        preview_args["device_index"] = device_index
+        preview_args.update(kwargs)
+        return True
+
+    class CameraContext:
+        def __init__(self, device_index, **kwargs):
+            capture_args["device_index"] = device_index
+            capture_args.update(kwargs)
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc_info):
+            pass
+
+    def capture_loop(camera, output_dir, **kwargs):
+        capture_args["loop"] = kwargs
+        return []
+
+    monkeypatch.setattr(cli, "run_camera_preview", preview)
+    monkeypatch.setattr(cli, "Camera", CameraContext)
+    monkeypatch.setattr(cli, "run_capture_loop", capture_loop)
+    assert (
+        cli.main(
+            [
+                "--preview",
+                "--camera-index",
+                "2",
+                "--camera-backend",
+                "any",
+                "--frame-width",
+                "1280",
+                "--frame-height",
+                "720",
+                "--min-radius",
+                "80",
+                "--max-radius",
+                "220",
+                "--hough-dp",
+                "1.4",
+                "--hough-param1",
+                "110",
+                "--hough-param2",
+                "60",
+            ]
+        )
+        == 0
+    )
+
+    assert preview_args["device_index"] == 2
+    assert preview_args["frame_width"] == 1280
+    assert preview_args["frame_height"] == 720
+    assert preview_args["min_radius"] == 80
+    assert preview_args["max_radius"] == 220
+    assert preview_args["dp"] == 1.4
+    assert preview_args["param1"] == 110
+    assert preview_args["param2"] == 60
+    assert capture_args["loop"]["dp"] == 1.4
+    assert capture_args["loop"]["param1"] == 110
+    assert capture_args["loop"]["param2"] == 60
 
 
 def test_main_threads_radius_and_hough_params_into_capture_loop(monkeypatch, tmp_path):
     captured_kwargs = {}
 
-    class _FakeCamera:
+    class FakeCamera:
         def __enter__(self):
             return self
 
         def __exit__(self, *exc_info):
             return None
 
-    def fake_camera_factory(*args, **kwargs):
-        return _FakeCamera()
-
-    def fake_run_capture_loop(camera, output_dir, **kwargs):
-        captured_kwargs.update(kwargs)
-        return iter(())
-
-    monkeypatch.setattr(cli, "Camera", fake_camera_factory)
-    monkeypatch.setattr(cli, "run_capture_loop", fake_run_capture_loop)
+    monkeypatch.setattr(cli, "Camera", lambda *args, **kwargs: FakeCamera())
+    monkeypatch.setattr(
+        cli, "run_capture_loop", lambda camera, output_dir, **kwargs: captured_kwargs.update(kwargs) or iter(())
+    )
 
     assert (
         cli.main(
@@ -186,3 +257,20 @@ def test_main_threads_radius_and_hough_params_into_capture_loop(monkeypatch, tmp
     assert captured_kwargs["dp"] == 1.5
     assert captured_kwargs["param1"] == 90
     assert captured_kwargs["param2"] == 55
+
+
+def test_camera_diagnostics_do_not_open_preview(monkeypatch, capsys):
+    monkeypatch.setattr(cli, "list_cameras", lambda backend: [])
+    monkeypatch.setattr(
+        cli, "dump_camera_properties", lambda *args: [("BACKEND", "fake")]
+    )
+    monkeypatch.setattr(
+        cli,
+        "run_camera_preview",
+        lambda *args, **kwargs: pytest.fail("diagnostics should skip preview"),
+    )
+
+    assert cli.main(["--preview", "--list-cameras"]) == 0
+    assert "No cameras found" in capsys.readouterr().out
+    assert cli.main(["--preview", "--dump-camera-props"]) == 0
+    assert "BACKEND: fake" in capsys.readouterr().out

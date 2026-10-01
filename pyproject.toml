@@ -9,7 +9,7 @@ description = "Periodically capture, annotate and crop pictures of analog wrist 
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
-    "opencv-python-headless>=4.9",
+    "opencv-python>=4.9",
     "numpy>=1.26",
 ]
 
