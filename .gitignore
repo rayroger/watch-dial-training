@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+venv/
+.venv/
+
+# Captured pictures / generated datasets are runtime output, not source.
+/captures/
