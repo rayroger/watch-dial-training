@@ -31,6 +31,15 @@ def test_detect_watch_regions_respects_radius_bounds():
     assert detections == []
 
 
+def test_detect_watch_regions_default_radius_range():
+    import inspect
+
+    signature = inspect.signature(detect_watch_regions)
+
+    assert signature.parameters["min_radius"].default == 150
+    assert signature.parameters["max_radius"].default == 350
+
+
 def test_detect_watch_regions_accepts_explicit_min_distance():
     image = make_synthetic_watches_image()
 

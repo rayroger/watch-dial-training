@@ -6,6 +6,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from tests.conftest import make_synthetic_watches_image
+from watch_dial_capture import capture as capture_module
 from watch_dial_capture.capture import MIN_CAPTURE_INTERVAL_SECONDS, run_capture_loop
 
 
@@ -130,4 +131,47 @@ def test_run_capture_loop_raises_after_max_consecutive_failures(tmp_path):
 
     assert camera.read_count == 3
     assert sleeps == [90, 90]
+
+
+def test_run_capture_loop_forwards_hough_params_to_detection(tmp_path, monkeypatch):
+    frame = make_synthetic_watches_image()
+    camera = _FakeCamera(frame)
+    captured_kwargs = {}
+    real_detect = capture_module.detect_watch_regions
+
+    def fake_detect(image, **kwargs):
+        captured_kwargs.update(kwargs)
+        return real_detect(image, **kwargs)
+
+    monkeypatch.setattr(capture_module, "detect_watch_regions", fake_detect)
+
+    list(
+        run_capture_loop(
+            camera,
+            tmp_path,
+            interval_seconds=90,
+            count=1,
+            min_radius=50,
+            max_radius=120,
+            dp=1.5,
+            param1=90,
+            param2=55,
+            sleep_fn=lambda _: None,
+        )
+    )
+
+    assert captured_kwargs["min_radius"] == 50
+    assert captured_kwargs["max_radius"] == 120
+    assert captured_kwargs["dp"] == 1.5
+    assert captured_kwargs["param1"] == 90
+    assert captured_kwargs["param2"] == 55
+
+
+def test_run_capture_loop_default_radius_matches_detection_defaults():
+    import inspect
+
+    signature = inspect.signature(run_capture_loop)
+
+    assert signature.parameters["min_radius"].default == 150
+    assert signature.parameters["max_radius"].default == 350
 
