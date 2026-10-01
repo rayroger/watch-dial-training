@@ -26,6 +26,7 @@ from .capture import (
     MIN_CAPTURE_INTERVAL_SECONDS,
     run_capture_loop,
 )
+from .preview import run_camera_preview
 
 CAMERA_BACKENDS = {
     "any": ("CAP_ANY", False),
@@ -181,6 +182,35 @@ def build_arg_parser() -> argparse.ArgumentParser:
         help="Largest expected watch-face radius in pixels (default: 400).",
     )
     parser.add_argument(
+        "--hough-dp",
+        type=float,
+        default=1.2,
+        help="Inverse accumulator resolution for Hough detection (default: 1.2).",
+    )
+    parser.add_argument(
+        "--hough-param1",
+        type=float,
+        default=100,
+        help="Higher Canny threshold for Hough detection (default: 100).",
+    )
+    parser.add_argument(
+        "--hough-param2",
+        type=float,
+        default=40,
+        help=(
+            "Circle accumulator threshold; higher values detect fewer circles "
+            "(default: 40)."
+        ),
+    )
+    parser.add_argument(
+        "--preview",
+        action="store_true",
+        help=(
+            "Show a live camera preview before capture. Press Enter/Space to "
+            "continue or Q/Esc to quit."
+        ),
+    )
+    parser.add_argument(
         "--max-consecutive-failures",
         type=int,
         default=5,
@@ -257,6 +287,25 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             print(f"{name}: {value}")
         return 0
 
+    if args.preview:
+        try:
+            accepted = run_camera_preview(
+                args.camera_index,
+                backend=backend,
+                frame_width=args.frame_width,
+                frame_height=args.frame_height,
+                min_radius=args.min_radius,
+                max_radius=args.max_radius,
+                dp=args.hough_dp,
+                param1=args.hough_param1,
+                param2=args.hough_param2,
+            )
+        except RuntimeError as exc:
+            parser.error(str(exc))
+        if not accepted:
+            print("Preview cancelled; no captures started.")
+            return 0
+
     with Camera(
         args.camera_index,
         backend=backend,
@@ -272,6 +321,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 count=args.count,
                 min_radius=args.min_radius,
                 max_radius=args.max_radius,
+                dp=args.hough_dp,
+                param1=args.hough_param1,
+                param2=args.hough_param2,
                 max_consecutive_failures=args.max_consecutive_failures or None,
             ):
                 print(f"Saved {result.annotated_path} ({len(result.watch_paths)} watch crop(s))")
