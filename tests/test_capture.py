@@ -6,7 +6,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from tests.conftest import make_synthetic_watches_image
-from watch_dial_capture.capture import run_capture_loop
+from watch_dial_capture.capture import MIN_CAPTURE_INTERVAL_SECONDS, run_capture_loop
 
 
 class _FakeCamera:
@@ -75,7 +75,7 @@ def test_run_capture_loop_runs_requested_number_of_captures(tmp_path):
         run_capture_loop(
             camera,
             tmp_path,
-            interval_seconds=5,
+            interval_seconds=90,
             count=3,
             min_radius=50,
             max_radius=120,
@@ -86,10 +86,31 @@ def test_run_capture_loop_runs_requested_number_of_captures(tmp_path):
     assert camera.read_count == 3
     assert len(results) == 3
     # Sleep is called between captures, not after the last one.
-    assert sleeps == [5, 5]
+    assert sleeps == [90, 90]
     for result in results:
         assert result.annotated_path.exists()
         assert len(result.watch_paths) == 2
+
+
+def test_run_capture_loop_enforces_minimum_interval(tmp_path):
+    frame = make_synthetic_watches_image()
+    camera = _FakeCamera(frame)
+    sleeps = []
+
+    list(
+        run_capture_loop(
+            camera,
+            tmp_path,
+            interval_seconds=5,
+            count=2,
+            min_radius=50,
+            max_radius=120,
+            sleep_fn=sleeps.append,
+        )
+    )
+
+    # A requested interval below the one-minute floor is clamped up.
+    assert sleeps == [MIN_CAPTURE_INTERVAL_SECONDS]
 
 
 def test_run_capture_loop_raises_after_max_consecutive_failures(tmp_path):
@@ -101,12 +122,12 @@ def test_run_capture_loop_raises_after_max_consecutive_failures(tmp_path):
             run_capture_loop(
                 camera,
                 tmp_path,
-                interval_seconds=1,
+                interval_seconds=90,
                 max_consecutive_failures=3,
                 sleep_fn=sleeps.append,
             )
         )
 
     assert camera.read_count == 3
-    assert sleeps == [1, 1]
+    assert sleeps == [90, 90]
 

@@ -2,7 +2,7 @@
 
 Example::
 
-    python -m watch_dial_capture.cli --output-dir ./dataset --interval 30
+    python -m watch_dial_capture.cli --output-dir ./dataset --interval 60
 
 Run ``python -m watch_dial_capture.cli --help`` for the full list of
 options.
@@ -15,7 +15,14 @@ import logging
 import sys
 from typing import Optional, Sequence
 
-from .capture import Camera, run_capture_loop
+from .capture import (
+    Camera,
+    DEFAULT_FOCUS_WARMUP_FRAMES,
+    DEFAULT_FRAME_HEIGHT,
+    DEFAULT_FRAME_WIDTH,
+    MIN_CAPTURE_INTERVAL_SECONDS,
+    run_capture_loop,
+)
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
@@ -41,7 +48,12 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "--interval",
         type=float,
         default=60.0,
-        help="Seconds to wait between captures (default: 60).",
+        help=(
+            "Seconds to wait between captures (default: 60). Values below "
+            f"{MIN_CAPTURE_INTERVAL_SECONDS:.0f} are clamped up to that "
+            "minimum: watches don't need to be photographed more than once "
+            "a minute."
+        ),
     )
     parser.add_argument(
         "--count",
@@ -72,6 +84,33 @@ def build_arg_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--frame-width",
+        type=int,
+        default=DEFAULT_FRAME_WIDTH,
+        help=(
+            "Requested capture width in pixels (default: "
+            f"{DEFAULT_FRAME_WIDTH}). Set higher than any webcam actually "
+            "supports to make it use its maximum (photo-mode) resolution "
+            "instead of a lower-res video/preview stream."
+        ),
+    )
+    parser.add_argument(
+        "--frame-height",
+        type=int,
+        default=DEFAULT_FRAME_HEIGHT,
+        help=f"Requested capture height in pixels (default: {DEFAULT_FRAME_HEIGHT}).",
+    )
+    parser.add_argument(
+        "--focus-warmup-frames",
+        type=int,
+        default=DEFAULT_FOCUS_WARMUP_FRAMES,
+        help=(
+            "Number of frames to discard before keeping one, giving the "
+            f"camera's autofocus time to settle (default: "
+            f"{DEFAULT_FOCUS_WARMUP_FRAMES})."
+        ),
+    )
+    parser.add_argument(
         "--verbose",
         action="store_true",
         help="Enable debug logging.",
@@ -88,7 +127,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         format="%(asctime)s %(levelname)s %(message)s",
     )
 
-    with Camera(args.camera_index) as camera:
+    with Camera(
+        args.camera_index,
+        frame_width=args.frame_width,
+        frame_height=args.frame_height,
+        focus_warmup_frames=args.focus_warmup_frames,
+    ) as camera:
         try:
             for result in run_capture_loop(
                 camera,
